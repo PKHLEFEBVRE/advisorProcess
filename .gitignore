@@ -1,0 +1,16 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.env
+.venv
+compliance.db
+reports/*.pdf
+emails/*.eml
+data/*.xlsx
+!emails/sample_email.eml
+!data/model_output.xlsx
+!data/trades.xlsx
