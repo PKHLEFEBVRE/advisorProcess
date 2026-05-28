@@ -15,7 +15,8 @@ def init_db():
             status TEXT NOT NULL DEFAULT 'Pending',
             report_path TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            frozen_at TIMESTAMP
+            frozen_at TIMESTAMP,
+            funds TEXT
         )
     ''')
     conn.commit()
@@ -46,19 +47,19 @@ def get_pending_records():
 def get_frozen_records():
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
-    cursor.execute("SELECT id, email_file, subject, date_received, report_path, frozen_at FROM records WHERE status = 'Frozen' ORDER BY frozen_at DESC")
+    cursor.execute("SELECT id, email_file, subject, date_received, report_path, frozen_at, funds FROM records WHERE status = 'Frozen' ORDER BY frozen_at DESC")
     records = cursor.fetchall()
     conn.close()
     return records
 
-def freeze_record(record_id, report_path):
+def freeze_record(record_id, report_path, funds):
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute('''
         UPDATE records
-        SET status = 'Frozen', report_path = ?, frozen_at = CURRENT_TIMESTAMP
+        SET status = 'Frozen', report_path = ?, frozen_at = CURRENT_TIMESTAMP, funds = ?
         WHERE id = ?
-    ''', (report_path, record_id))
+    ''', (report_path, ', '.join(funds), record_id))
     conn.commit()
     conn.close()
 

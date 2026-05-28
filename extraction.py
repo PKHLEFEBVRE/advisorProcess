@@ -37,13 +37,17 @@ def get_trades_data(filepath=TRADES_FILE):
         print(f"Error reading trades data: {e}")
         return pd.DataFrame()
 
-def create_pdf_report(record_id, email_data, model_df, trades_df, comment, output_path):
+def create_pdf_report(record_id, email_data, model_df, trades_df, comment, output_path, funds):
     doc = SimpleDocTemplate(output_path, pagesize=letter)
     styles = getSampleStyleSheet()
     story = []
 
     # Title
     story.append(Paragraph(f"Compliance Report - Record #{record_id}", styles['Heading1']))
+    story.append(Spacer(1, 12))
+
+
+    story.append(Paragraph(f"<b>Applicable Funds:</b> {', '.join(funds)}", styles['Normal']))
     story.append(Spacer(1, 12))
 
     # Email Section

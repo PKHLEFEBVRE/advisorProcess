@@ -83,7 +83,17 @@ if page == "Pending Views":
                         edited_trades = pd.DataFrame()
                         st.warning("No trades found.")
 
-                    st.markdown("### 4. Justification")
+
+                    st.markdown("### 4. Fund Selection")
+                    selected_funds = st.multiselect(
+                        "Which fund(s) does this view apply to?",
+                        ["MFOF", "MLSU"],
+                        default=["MFOF"],
+                        key=f"fund_{rec_id}"
+                    )
+
+                    st.markdown("### 5. Justification")
+
                     comment = st.text_area("Add compliance notes/justification here:", key=f"comment_{rec_id}")
 
                     if st.button("❄️ Freeze & Generate Report", key=f"freeze_{rec_id}"):
@@ -97,10 +107,10 @@ if page == "Pending Views":
                         report_filename = f"report_{rec_id}_{datetime.now().strftime('%Y%m%d%H%M%S')}.pdf"
                         report_path = os.path.join(REPORTS_DIR, report_filename)
 
-                        create_pdf_report(rec_id, parsed_email, model_df, selected_trades, comment, report_path)
+                        create_pdf_report(rec_id, parsed_email, model_df, selected_trades, comment, report_path, selected_funds)
 
                         # Update database
-                        freeze_record(rec_id, report_path)
+                        freeze_record(rec_id, report_path, selected_funds)
 
                         st.success(f"Record Frozen successfully! Report saved to {report_path}")
                         st.rerun()
@@ -113,12 +123,13 @@ elif page == "Compliance Archive":
         st.info("No frozen records found.")
     else:
         for record in frozen_records:
-            rec_id, email_file, subject, date_received, report_path, frozen_at = record
+            rec_id, email_file, subject, date_received, report_path, frozen_at, funds = record
 
             with st.container():
                 st.markdown(f"#### Record #{rec_id} - {subject}")
                 st.write(f"**Frozen At:** {frozen_at}")
                 st.write(f"**Email Date:** {date_received}")
+                st.write(f"**Funds:** {funds if funds else 'N/A'}")
 
                 if os.path.exists(report_path):
                     with open(report_path, "rb") as pdf_file:
