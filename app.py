@@ -42,21 +42,23 @@ if page == "Pending Views":
 
             with st.expander(f"📬 {subject} ({date_received})", expanded=False):
                 # Using form to group "Launch" and "Freeze" interactions
-                col1, col2, col3, col4 = st.columns([1, 1, 1, 3])
+                col1, col2, col3, col4, col5 = st.columns([1.5, 2, 2, 1.5, 3])
                 with col1:
                     if st.button("🚀 Launch", key=f"launch_{rec_id}"):
                         st.session_state[f"launched_{rec_id}"] = True
-                        # Take a snapshot of the data exactly when launched
                         st.session_state[f"model_{rec_id}"] = get_model_data()
                         st.session_state[f"trades_{rec_id}"] = get_trades_data()
                 with col2:
                     if st.session_state.get(f"launched_{rec_id}", False):
-                        if st.button("🔄 Refresh", key=f"refresh_{rec_id}"):
-                            # Re-take the snapshot with current Excel data
+                        if st.button("🔄 Refresh Model", key=f"refresh_mod_{rec_id}"):
                             st.session_state[f"model_{rec_id}"] = get_model_data()
-                            st.session_state[f"trades_{rec_id}"] = get_trades_data()
                             st.rerun()
                 with col3:
+                    if st.session_state.get(f"launched_{rec_id}", False):
+                        if st.button("🔄 Refresh Trades", key=f"refresh_trd_{rec_id}"):
+                            st.session_state[f"trades_{rec_id}"] = get_trades_data()
+                            st.rerun()
+                with col4:
                     if st.button("🗑️ Delete", key=f"delete_{rec_id}"):
                         delete_record(rec_id)
                         st.rerun()
