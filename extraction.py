@@ -1,5 +1,3 @@
-import email
-from email import policy
 import os
 import pandas as pd
 from datetime import datetime
@@ -7,29 +5,20 @@ from reportlab.lib.pagesizes import letter
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib import colors
+import extract_msg
 
 def parse_email(file_path):
-    with open(file_path, 'rb') as f:
-        msg = email.message_from_binary_file(f, policy=policy.default)
+    msg = extract_msg.Message(file_path)
 
-    subject = msg.get('Subject', 'No Subject')
-    date = msg.get('Date', 'No Date')
+    subject = msg.subject or 'No Subject'
+    date = msg.date or 'No Date'
+    body = msg.body or 'No Content'
 
-    # Extract body
-    body = ""
-    if msg.is_multipart():
-        for part in msg.walk():
-            ctype = part.get_content_type()
-            cdispo = str(part.get('Content-Disposition'))
-            if ctype == 'text/plain' and 'attachment' not in cdispo:
-                body = part.get_payload(decode=True).decode()
-                break
-    else:
-        body = msg.get_payload(decode=True).decode()
+    msg.close()
 
     return {
         'subject': subject,
-        'date': date,
+        'date': str(date),
         'body': body.strip()
     }
 
@@ -115,10 +104,4 @@ def create_pdf_report(record_id, email_data, model_df, trades_df, comment, outpu
     return output_path
 
 if __name__ == '__main__':
-    # Test script functionality
-    pass # parsed = parse_email('emails/sample_email.eml')
-    # print("Email Parsed:", parsed['subject'])
-    # m_df = get_model_data()
-    # t_df = get_trades_data()
-    # out = create_pdf_report(1, parsed, m_df, t_df, "Tested auto PDF generation.", "reports/test_report.pdf")
-    # print("Report generated:", out)
+    pass

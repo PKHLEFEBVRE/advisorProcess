@@ -4,3 +4,4 @@ openpyxl
 reportlab
 watchdog
 plyer
+extract-msg

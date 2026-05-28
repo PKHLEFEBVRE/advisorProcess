@@ -16,7 +16,7 @@ for directory in ["emails", "data", "reports"]:
     os.makedirs(directory, exist_ok=True)
 
 # Sync local emails to database
-email_files = glob.glob('emails/*.eml')
+email_files = glob.glob('emails/*.msg')
 for email_file in email_files:
     try:
         parsed = parse_email(email_file)

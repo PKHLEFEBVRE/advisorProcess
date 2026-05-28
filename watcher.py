@@ -6,7 +6,7 @@ from plyer import notification
 
 class EmailHandler(FileSystemEventHandler):
     def on_created(self, event):
-        if not event.is_directory and event.src_path.endswith('.eml'):
+        if not event.is_directory and event.src_path.endswith('.msg'):
             filename = os.path.basename(event.src_path)
             self.show_notification(f"New Advisor View Received!\n\n{filename}\n\nPlease open the Compliance Tracker app to review.")
 
@@ -31,7 +31,7 @@ if __name__ == "__main__":
     observer.schedule(event_handler, path, recursive=False)
     observer.start()
 
-    print(f"Monitoring '{path}' for new .eml files...")
+    print(f"Monitoring '{path}' for new .msg files...")
 
     try:
         while True:

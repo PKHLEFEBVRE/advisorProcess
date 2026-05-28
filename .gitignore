@@ -9,8 +9,8 @@ venv/
 .venv
 compliance.db
 reports/*.pdf
-emails/*.eml
+emails/*.msg
 data/*.xlsx
-!emails/sample_email.eml
+!emails/sample_email.msg
 !data/model_output.xlsx
 !data/trades.xlsx
