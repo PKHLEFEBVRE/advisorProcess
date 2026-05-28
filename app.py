@@ -1,3 +1,4 @@
+from config import EMAILS_DIR, REPORTS_DIR
 from datetime import datetime
 import streamlit as st
 import pandas as pd
@@ -12,11 +13,11 @@ st.set_page_config(page_title="Compliance Tracker", layout="wide")
 init_db()
 
 # Ensure directories exist
-for directory in ["emails", "data", "reports"]:
+for directory in [EMAILS_DIR, REPORTS_DIR]:
     os.makedirs(directory, exist_ok=True)
 
 # Sync local emails to database
-email_files = glob.glob('emails/*.msg')
+email_files = glob.glob(os.path.join(EMAILS_DIR, '*.msg'))
 for email_file in email_files:
     try:
         parsed = parse_email(email_file)
@@ -94,7 +95,7 @@ if page == "Pending Views":
 
                         # Generate PDF
                         report_filename = f"report_{rec_id}_{datetime.now().strftime('%Y%m%d%H%M%S')}.pdf"
-                        report_path = os.path.join('reports', report_filename)
+                        report_path = os.path.join(REPORTS_DIR, report_filename)
 
                         create_pdf_report(rec_id, parsed_email, model_df, selected_trades, comment, report_path)
 

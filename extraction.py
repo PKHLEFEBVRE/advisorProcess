@@ -1,3 +1,4 @@
+from config import MODEL_FILE, TRADES_FILE
 import os
 import pandas as pd
 from datetime import datetime
@@ -22,14 +23,14 @@ def parse_email(file_path):
         'body': body.strip()
     }
 
-def get_model_data(filepath='data/model_output.xlsx'):
+def get_model_data(filepath=MODEL_FILE):
     try:
         return pd.read_excel(filepath)
     except Exception as e:
         print(f"Error reading model data: {e}")
         return pd.DataFrame()
 
-def get_trades_data(filepath='data/trades.xlsx'):
+def get_trades_data(filepath=TRADES_FILE):
     try:
         return pd.read_excel(filepath)
     except Exception as e:

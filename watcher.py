@@ -22,7 +22,8 @@ class EmailHandler(FileSystemEventHandler):
             print(f"Notification failed: {e}")
 
 if __name__ == "__main__":
-    path = r"C:\Users\plefebvre\Documents\advisorProcess\emails"
+    from config import EMAILS_DIR
+    path = EMAILS_DIR
     if not os.path.exists(path):
         os.makedirs(path)
 
