@@ -45,9 +45,15 @@ if page == "Pending Views":
                 with col1:
                     if st.button("🚀 Launch", key=f"launch_{rec_id}"):
                         st.session_state[f"launched_{rec_id}"] = True
+                        # Take a snapshot of the data exactly when launched
+                        st.session_state[f"model_{rec_id}"] = get_model_data()
+                        st.session_state[f"trades_{rec_id}"] = get_trades_data()
                 with col2:
                     if st.session_state.get(f"launched_{rec_id}", False):
                         if st.button("🔄 Refresh Data", key=f"refresh_{rec_id}"):
+                            # Re-take the snapshot with current Excel data
+                            st.session_state[f"model_{rec_id}"] = get_model_data()
+                            st.session_state[f"trades_{rec_id}"] = get_trades_data()
                             st.rerun()
 
                 if st.session_state.get(f"launched_{rec_id}", False):
@@ -57,11 +63,11 @@ if page == "Pending Views":
                     st.text_area("Email Content", parsed_email['body'], height=150, disabled=True, key=f"email_{rec_id}")
 
                     st.markdown("### 2. Model Output")
-                    model_df = get_model_data()
+                    model_df = st.session_state.get(f"model_{rec_id}", pd.DataFrame())
                     st.dataframe(model_df, width='stretch')
 
                     st.markdown("### 3. Trades")
-                    trades_df = get_trades_data()
+                    trades_df = st.session_state.get(f"trades_{rec_id}", pd.DataFrame()).copy()
 
                     if not trades_df.empty:
                         st.write("Select the trades that apply to this view:")
