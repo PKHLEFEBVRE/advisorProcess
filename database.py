@@ -1,7 +1,7 @@
 import sqlite3
 import os
 
-DB_PATH = 'compliance.db'
+DB_PATH = r"V:\MONOCLE\Advisor\advisorProcess\compliance.db"
 
 def init_db():
     conn = sqlite3.connect(DB_PATH)
