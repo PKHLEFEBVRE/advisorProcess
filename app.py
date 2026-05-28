@@ -41,10 +41,14 @@ if page == "Pending Views":
 
             with st.expander(f"📬 {subject} ({date_received})", expanded=False):
                 # Using form to group "Launch" and "Freeze" interactions
-                col1, col2 = st.columns([1, 5])
+                col1, col2, col3 = st.columns([1, 1, 4])
                 with col1:
                     if st.button("🚀 Launch", key=f"launch_{rec_id}"):
                         st.session_state[f"launched_{rec_id}"] = True
+                with col2:
+                    if st.session_state.get(f"launched_{rec_id}", False):
+                        if st.button("🔄 Refresh Data", key=f"refresh_{rec_id}"):
+                            st.rerun()
 
                 if st.session_state.get(f"launched_{rec_id}", False):
                     parsed_email = parse_email(email_file)
@@ -88,7 +92,7 @@ if page == "Pending Views":
                     selected_funds = st.multiselect(
                         "Which fund(s) does this view apply to?",
                         ["MFOF", "MLSU"],
-                        default=["MFOF"],
+                        default=["MFOF", "MLSU"],
                         key=f"fund_{rec_id}"
                     )
 

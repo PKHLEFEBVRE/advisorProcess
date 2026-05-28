@@ -1,5 +1,6 @@
 import time
 import os
+import subprocess
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 from plyer import notification
@@ -9,6 +10,13 @@ class EmailHandler(FileSystemEventHandler):
         if not event.is_directory and event.src_path.endswith('.msg'):
             filename = os.path.basename(event.src_path)
             self.show_notification(f"New Advisor View Received!\n\n{filename}\n\nPlease open the Compliance Tracker app to review.")
+
+            # Auto-launch the app
+            try:
+                # We use start to run the batch file asynchronously so it doesn't block the watcher
+                subprocess.Popen(['cmd.exe', '/c', 'start', 'run_app.bat'])
+            except Exception as e:
+                print(f"Failed to auto-launch app: {e}")
 
     def show_notification(self, message):
         try:
