@@ -1,10 +1,11 @@
+import subprocess
 from config import EMAILS_DIR, REPORTS_DIR
 from datetime import datetime
 import streamlit as st
 import pandas as pd
 import os
 import glob
-from database import init_db, add_pending_record, get_pending_records, get_frozen_records, freeze_record
+from database import init_db, add_pending_record, get_pending_records, get_frozen_records, freeze_record, delete_record
 from extraction import parse_email, get_model_data, get_trades_data, create_pdf_report
 
 st.set_page_config(page_title="Compliance Tracker", layout="wide")
@@ -41,7 +42,7 @@ if page == "Pending Views":
 
             with st.expander(f"📬 {subject} ({date_received})", expanded=False):
                 # Using form to group "Launch" and "Freeze" interactions
-                col1, col2, col3 = st.columns([1, 1, 4])
+                col1, col2, col3, col4 = st.columns([1, 1, 1, 3])
                 with col1:
                     if st.button("🚀 Launch", key=f"launch_{rec_id}"):
                         st.session_state[f"launched_{rec_id}"] = True
@@ -50,11 +51,15 @@ if page == "Pending Views":
                         st.session_state[f"trades_{rec_id}"] = get_trades_data()
                 with col2:
                     if st.session_state.get(f"launched_{rec_id}", False):
-                        if st.button("🔄 Refresh Data", key=f"refresh_{rec_id}"):
+                        if st.button("🔄 Refresh", key=f"refresh_{rec_id}"):
                             # Re-take the snapshot with current Excel data
                             st.session_state[f"model_{rec_id}"] = get_model_data()
                             st.session_state[f"trades_{rec_id}"] = get_trades_data()
                             st.rerun()
+                with col3:
+                    if st.button("🗑️ Delete", key=f"delete_{rec_id}"):
+                        delete_record(rec_id)
+                        st.rerun()
 
                 if st.session_state.get(f"launched_{rec_id}", False):
                     parsed_email = parse_email(email_file)
@@ -121,6 +126,16 @@ if page == "Pending Views":
 
                         # Update database
                         freeze_record(rec_id, report_path, selected_funds)
+
+                        # Auto-open the PDF
+                        try:
+                            os.startfile(report_path)
+                        except AttributeError:
+                            # Fallback for non-Windows (or if os.startfile fails)
+                            try:
+                                subprocess.call(['open', report_path])
+                            except Exception:
+                                pass
 
                         st.success(f"Record Frozen successfully! Report saved to {report_path}")
                         st.rerun()

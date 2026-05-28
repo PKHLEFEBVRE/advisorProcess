@@ -63,6 +63,14 @@ def freeze_record(record_id, report_path, funds):
     conn.commit()
     conn.close()
 
+
+def delete_record(record_id):
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM records WHERE id = ?", (record_id,))
+    conn.commit()
+    conn.close()
+
 if __name__ == '__main__':
     init_db()
     print("Database initialized.")
