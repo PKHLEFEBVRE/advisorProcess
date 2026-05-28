@@ -7,7 +7,3 @@ pip install -q -r requirements.txt
 
 echo Starting Compliance Tracker...
 python -m streamlit run app.py
-
-echo.
-echo Application closed or crashed.
-pause

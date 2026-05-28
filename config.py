@@ -19,3 +19,6 @@ TRADES_FILE = MAIN_DIR + r"\Monocle trades from addin.xlsx"
 
 # Folder where the final PDF Compliance Reports should be saved
 REPORTS_DIR = MAIN_DIR + r"\reports"
+
+# The "Named Range" in your Excel model file that contains the data table
+MODEL_NAMED_RANGE = "ModelOutput"
