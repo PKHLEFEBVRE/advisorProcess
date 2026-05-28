@@ -11,6 +11,10 @@ st.set_page_config(page_title="Compliance Tracker", layout="wide")
 # Initialize database
 init_db()
 
+# Ensure directories exist
+for directory in ["emails", "data", "reports"]:
+    os.makedirs(directory, exist_ok=True)
+
 # Sync local emails to database
 email_files = glob.glob('emails/*.eml')
 for email_file in email_files:

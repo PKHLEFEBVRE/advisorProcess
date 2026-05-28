@@ -9,8 +9,8 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib import colors
 
 def parse_email(file_path):
-    with open(file_path, 'r') as f:
-        msg = email.message_from_file(f, policy=policy.default)
+    with open(file_path, 'rb') as f:
+        msg = email.message_from_binary_file(f, policy=policy.default)
 
     subject = msg.get('Subject', 'No Subject')
     date = msg.get('Date', 'No Date')
@@ -116,9 +116,9 @@ def create_pdf_report(record_id, email_data, model_df, trades_df, comment, outpu
 
 if __name__ == '__main__':
     # Test script functionality
-    parsed = parse_email('emails/sample_email.eml')
-    print("Email Parsed:", parsed['subject'])
-    m_df = get_model_data()
-    t_df = get_trades_data()
-    out = create_pdf_report(1, parsed, m_df, t_df, "Tested auto PDF generation.", "reports/test_report.pdf")
-    print("Report generated:", out)
+    pass # parsed = parse_email('emails/sample_email.eml')
+    # print("Email Parsed:", parsed['subject'])
+    # m_df = get_model_data()
+    # t_df = get_trades_data()
+    # out = create_pdf_report(1, parsed, m_df, t_df, "Tested auto PDF generation.", "reports/test_report.pdf")
+    # print("Report generated:", out)

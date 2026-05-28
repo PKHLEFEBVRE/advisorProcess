@@ -2,9 +2,7 @@ import time
 import os
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
-import tkinter as tk
-from tkinter import messagebox
-import threading
+from plyer import notification
 
 class EmailHandler(FileSystemEventHandler):
     def on_created(self, event):
@@ -13,16 +11,15 @@ class EmailHandler(FileSystemEventHandler):
             self.show_notification(f"New Advisor View Received!\n\n{filename}\n\nPlease open the Compliance Tracker app to review.")
 
     def show_notification(self, message):
-        def _notify():
-            # Create a simple Tkinter window for notification (since plyer/win10toast can be finicky in pure headless/cross-platform envs)
-            root = tk.Tk()
-            root.withdraw() # Hide main window
-            root.attributes('-topmost', True) # Keep on top
-            messagebox.showinfo("Compliance Tracker", message, parent=root)
-            root.destroy()
-
-        # Run notification in a separate thread so it doesn't block the watcher
-        threading.Thread(target=_notify).start()
+        try:
+            notification.notify(
+                title='Compliance Tracker',
+                message=message,
+                app_name='Compliance Tracker',
+                timeout=10
+            )
+        except Exception as e:
+            print(f"Notification failed: {e}")
 
 if __name__ == "__main__":
     path = os.path.abspath("emails")
