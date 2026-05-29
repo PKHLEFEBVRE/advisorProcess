@@ -9,6 +9,25 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib import colors
 import extract_msg
 
+import glob
+from config import EMAILS_DIR
+
+def get_recent_emails(limit=10):
+    email_files = glob.glob(os.path.join(EMAILS_DIR, '*.msg'))
+    # Sort files by modification time (newest first)
+    email_files.sort(key=os.path.getmtime, reverse=True)
+
+    recent_emails = []
+    for f in email_files[:limit]:
+        try:
+            parsed = parse_email(f)
+            parsed['filepath'] = f
+            recent_emails.append(parsed)
+        except Exception as e:
+            print(f"Error parsing {f}: {e}")
+
+    return recent_emails
+
 def parse_email(file_path):
     msg = extract_msg.Message(file_path)
 

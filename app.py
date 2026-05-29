@@ -1,12 +1,11 @@
-import subprocess
 from config import EMAILS_DIR, REPORTS_DIR
 from datetime import datetime
 import streamlit as st
 import pandas as pd
 import os
-import glob
-from database import init_db, add_pending_record, get_pending_records, get_frozen_records, freeze_record, delete_record
-from extraction import parse_email, get_model_data, get_trades_data, create_pdf_report
+import subprocess
+from database import init_db, get_frozen_trade_ids, get_frozen_events, freeze_event, get_trades_for_event
+from extraction import get_model_data, get_trades_data, create_pdf_report, get_recent_emails
 
 st.set_page_config(page_title="Compliance Tracker", layout="wide")
 
@@ -17,146 +16,142 @@ init_db()
 for directory in [EMAILS_DIR, REPORTS_DIR]:
     os.makedirs(directory, exist_ok=True)
 
-# Sync local emails to database
-email_files = glob.glob(os.path.join(EMAILS_DIR, '*.msg'))
-for email_file in email_files:
-    try:
-        parsed = parse_email(email_file)
-        add_pending_record(email_file, parsed['subject'], parsed['date'])
-    except Exception as e:
-        st.error(f"Error parsing {email_file}: {e}")
-
 # Sidebar
 st.sidebar.title("Compliance App")
-page = st.sidebar.radio("Navigation", ["Pending Views", "Compliance Archive"])
+page = st.sidebar.radio("Navigation", ["Pending Trades", "Compliance Archive"])
 
-if page == "Pending Views":
-    st.header("Pending Advisor Views")
+if page == "Pending Trades":
+    st.header("Pending Trades to Review")
 
-    pending_records = get_pending_records()
-    if not pending_records:
-        st.info("No pending views to process.")
+    # 1. Get all trades
+    all_trades_df = get_trades_data()
+
+    if all_trades_df.empty or 'Id' not in all_trades_df.columns:
+        st.info("No trades found in the file or 'Id' column is missing.")
     else:
-        for record in pending_records:
-            rec_id, email_file, subject, date_received = record
+        # 2. Get frozen trade IDs
+        frozen_ids = get_frozen_trade_ids()
 
-            with st.expander(f"📬 {subject} ({date_received})", expanded=False):
-                # Using form to group "Launch" and "Freeze" interactions
-                col1, col2, col3, col4, col5 = st.columns([1.5, 2, 2, 1.5, 3])
-                with col1:
-                    if st.button("🚀 Launch", key=f"launch_{rec_id}"):
-                        st.session_state[f"launched_{rec_id}"] = True
-                        st.session_state[f"model_{rec_id}"] = get_model_data()
-                        st.session_state[f"trades_{rec_id}"] = get_trades_data()
-                with col2:
-                    if st.session_state.get(f"launched_{rec_id}", False):
-                        if st.button("🔄 Refresh Model", key=f"refresh_mod_{rec_id}"):
-                            st.session_state[f"model_{rec_id}"] = get_model_data()
-                            st.rerun()
-                with col3:
-                    if st.session_state.get(f"launched_{rec_id}", False):
-                        if st.button("🔄 Refresh Trades", key=f"refresh_trd_{rec_id}"):
-                            st.session_state[f"trades_{rec_id}"] = get_trades_data()
-                            st.rerun()
-                with col4:
-                    if st.button("🗑️ Delete", key=f"delete_{rec_id}"):
-                        delete_record(rec_id)
-                        st.rerun()
+        # 3. Filter for pending trades
+        pending_trades_df = all_trades_df[~all_trades_df['Id'].astype(str).isin(frozen_ids)].copy()
 
-                if st.session_state.get(f"launched_{rec_id}", False):
-                    parsed_email = parse_email(email_file)
+        if pending_trades_df.empty:
+            st.success("No pending trades to freeze. You're all caught up!")
+        else:
+            st.write("Select the trades you want to freeze in a single compliance event:")
+            pending_trades_df.insert(0, 'Selected', False)
 
-                    st.markdown("### 1. Advisor View")
-                    st.text_area("Email Content", parsed_email['body'], height=150, disabled=True, key=f"email_{rec_id}")
-
-                    st.markdown("### 2. Model Output")
-                    model_df = st.session_state.get(f"model_{rec_id}", pd.DataFrame())
-                    st.dataframe(model_df, width='stretch')
-
-                    st.markdown("### 3. Trades")
-                    trades_df = st.session_state.get(f"trades_{rec_id}", pd.DataFrame()).copy()
-
-                    if not trades_df.empty:
-                        st.write("Select the trades that apply to this view:")
-
-                        # Add a checkbox for each trade row
-                        trades_df['Selected'] = False
-
-                        # Use st.data_editor to allow checkbox selection
-                        edited_trades = st.data_editor(
-                            trades_df,
-                            column_config={
-                                "Selected": st.column_config.CheckboxColumn(
-                                    "Select",
-                                    help="Select trade for compliance report",
-                                    default=False,
-                                )
-                            },
-                            disabled=trades_df.columns.drop('Selected').tolist(),
-                            hide_index=True,
-                            key=f"trade_editor_{rec_id}"
-                        )
-                    else:
-                        edited_trades = pd.DataFrame()
-                        st.warning("No trades found.")
-
-
-                    st.markdown("### 4. Fund Selection")
-                    selected_funds = st.multiselect(
-                        "Which fund(s) does this view apply to?",
-                        ["MFOF", "MLSU"],
-                        default=["MFOF", "MLSU"],
-                        key=f"fund_{rec_id}"
+            edited_trades = st.data_editor(
+                pending_trades_df,
+                column_config={
+                    "Selected": st.column_config.CheckboxColumn(
+                        "Select",
+                        help="Select trade for compliance report",
+                        default=False,
                     )
+                },
+                disabled=pending_trades_df.columns.drop('Selected').tolist(),
+                hide_index=True,
+                key="trade_editor"
+            )
 
-                    st.markdown("### 5. Justification")
+            selected_trades = edited_trades[edited_trades['Selected'] == True].drop(columns=['Selected'])
 
-                    comment = st.text_area("Add compliance notes/justification here:", key=f"comment_{rec_id}")
+            if not selected_trades.empty:
+                st.divider()
+                st.subheader("Compliance Event Details")
 
-                    if st.button("❄️ Freeze & Generate Report", key=f"freeze_{rec_id}"):
-                        # Filter for selected trades only
-                        if not edited_trades.empty:
-                            selected_trades = edited_trades[edited_trades['Selected'] == True].drop(columns=['Selected'])
-                        else:
-                            selected_trades = pd.DataFrame()
+                # --- Email Selection ---
+                st.markdown("### 1. Select Advisor View")
+                email_limit = st.number_input("How many recent emails to show?", min_value=1, max_value=50, value=10, step=1)
+                recent_emails = get_recent_emails(limit=email_limit)
 
-                        # Generate PDF
-                        report_filename = f"report_{rec_id}_{datetime.now().strftime('%Y%m%d%H%M%S')}.pdf"
+                if not recent_emails:
+                    st.warning("No emails found in the directory.")
+                else:
+                    # Format options for selectbox
+                    email_options = {e['filepath']: f"{e['date']} - {e['subject']}" for e in recent_emails}
+                    selected_email_path = st.selectbox("Choose Email", options=list(email_options.keys()), format_func=lambda x: email_options[x])
+
+                    # Show preview
+                    selected_email_data = next((e for e in recent_emails if e['filepath'] == selected_email_path), None)
+                    if selected_email_data:
+                        st.text_area("Email Preview", selected_email_data['body'], height=100, disabled=True)
+
+                # --- Model Data ---
+                st.markdown("### 2. Model Output")
+                col1, col2 = st.columns([1, 5])
+                with col1:
+                    if st.button("🔄 Refresh Model Data"):
+                        st.rerun()
+                model_df = get_model_data()
+                st.dataframe(model_df, width='stretch')
+
+                # --- Fund Selection ---
+                st.markdown("### 3. Fund Selection")
+                selected_funds = st.multiselect(
+                    "Which fund(s) does this view apply to?",
+                    ["MFOF", "MLSU"],
+                    default=["MFOF", "MLSU"]
+                )
+
+                # --- Justification ---
+                st.markdown("### 4. Justification")
+                comment = st.text_area("Add compliance notes/justification here:")
+
+                # --- Freeze ---
+                if st.button("❄️ Freeze & Generate Report", type="primary"):
+                    if not recent_emails:
+                        st.error("Cannot freeze without an advisor email.")
+                    else:
+                        report_filename = f"report_{datetime.now().strftime('%Y%m%d%H%M%S')}.pdf"
                         report_path = os.path.join(REPORTS_DIR, report_filename)
 
-                        create_pdf_report(rec_id, parsed_email, model_df, selected_trades, comment, report_path, selected_funds)
+                        # Generate PDF
+                        create_pdf_report("NEW", selected_email_data, model_df, selected_trades, comment, report_path, selected_funds)
 
                         # Update database
-                        freeze_record(rec_id, report_path, selected_funds)
+                        trade_ids = selected_trades['Id'].tolist()
+                        freeze_event(
+                            selected_email_data['filepath'],
+                            selected_email_data['subject'],
+                            selected_email_data['date'],
+                            comment,
+                            selected_funds,
+                            report_path,
+                            trade_ids
+                        )
 
                         # Auto-open the PDF
                         try:
                             os.startfile(report_path)
                         except AttributeError:
-                            # Fallback for non-Windows (or if os.startfile fails)
                             try:
                                 subprocess.call(['open', report_path])
                             except Exception:
                                 pass
 
-                        st.success(f"Record Frozen successfully! Report saved to {report_path}")
+                        st.success("Trades successfully frozen!")
                         st.rerun()
 
 elif page == "Compliance Archive":
-    st.header("Compliance Archive (Frozen Records)")
+    st.header("Compliance Archive (Frozen Events)")
 
-    frozen_records = get_frozen_records()
-    if not frozen_records:
-        st.info("No frozen records found.")
+    frozen_events = get_frozen_events()
+    if not frozen_events:
+        st.info("No frozen events found.")
     else:
-        for record in frozen_records:
-            rec_id, email_file, subject, date_received, report_path, frozen_at, funds = record
+        for record in frozen_events:
+            event_id, subject, date_received, funds, report_path, frozen_at = record
 
             with st.container():
-                st.markdown(f"#### Record #{rec_id} - {subject}")
+                st.markdown(f"#### Event: {subject}")
                 st.write(f"**Frozen At:** {frozen_at}")
                 st.write(f"**Email Date:** {date_received}")
                 st.write(f"**Funds:** {funds if funds else 'N/A'}")
+
+                trades = get_trades_for_event(event_id)
+                st.write(f"**Associated Trades:** {', '.join(trades) if trades else 'None'}")
 
                 if os.path.exists(report_path):
                     with open(report_path, "rb") as pdf_file:
@@ -166,7 +161,7 @@ elif page == "Compliance Archive":
                             data=PDFbyte,
                             file_name=os.path.basename(report_path),
                             mime='application/octet-stream',
-                            key=f"dl_{rec_id}"
+                            key=f"dl_{event_id}"
                         )
                 else:
                     st.error("Report file not found.")

@@ -16,6 +16,7 @@ df_model.to_excel('data/model_output.xlsx', index=False)
 
 # Generate mock trades.xlsx
 trades_data = {
+    'Id': ['TRD-001', 'TRD-002', 'TRD-003', 'TRD-004'],
     'Date': ['2023-10-25', '2023-10-25', '2023-10-26', '2023-10-26'],
     'Ticker': ['AAPL', 'MSFT', 'TSLA', 'AMZN'],
     'Action': ['BUY', 'SELL', 'SELL', 'BUY'],
