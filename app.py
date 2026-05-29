@@ -92,9 +92,15 @@ if page == "Pending Trades":
                         st.rerun()
                 model_df = get_model_data()
                 if len(model_df.columns) >= 3:
-                    st.dataframe(model_df.style.format({col: '{:.2%}' for col in model_df.columns[-3:]}, na_rep=''), width='stretch')
+                    # Build format dict dynamically to avoid errors on string columns
+                        format_dict = {}
+                        if pd.api.types.is_numeric_dtype(model_df[model_df.columns[0]]):
+                            format_dict[model_df.columns[0]] = "{:.0f}"
+                        for col in model_df.columns[-3:]:
+                            format_dict[col] = "{:.2%}"
+                        st.dataframe(model_df.style.format(format_dict, na_rep=''), width='stretch', hide_index=True)
                 else:
-                    st.dataframe(model_df, width='stretch')
+                    st.dataframe(model_df, width='stretch', hide_index=True)
 
                 # --- Fund Selection ---
                 st.markdown("### 3. Fund Selection")
