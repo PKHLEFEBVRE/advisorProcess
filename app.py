@@ -4,7 +4,7 @@ import streamlit as st
 import pandas as pd
 import os
 import subprocess
-from database import init_db, get_frozen_trade_ids, get_frozen_events, freeze_event, get_trades_for_event
+from database import init_db, get_frozen_trade_ids, get_frozen_events, freeze_event, get_trades_for_event, unfreeze_event, get_audit_log
 from extraction import get_model_data, get_trades_data, create_pdf_report, get_recent_emails
 
 st.set_page_config(page_title="Compliance Tracker", layout="wide")
@@ -18,7 +18,7 @@ for directory in [EMAILS_DIR, REPORTS_DIR]:
 
 # Sidebar
 st.sidebar.title("Compliance App")
-page = st.sidebar.radio("Navigation", ["Pending Trades", "Compliance Archive"])
+page = st.sidebar.radio("Navigation", ["Pending Trades", "Compliance Archive", "Audit Log"])
 
 if page == "Pending Trades":
     st.header("Pending Trades to Review")
@@ -26,9 +26,15 @@ if page == "Pending Trades":
     # 1. Get all trades
     all_trades_df = get_trades_data()
 
-    if all_trades_df.empty or 'Id' not in all_trades_df.columns:
-        st.info("No trades found in the file or 'Id' column is missing.")
+    if all_trades_df.empty:
+        st.info("No trades found in the file.")
     else:
+        # Trade Data Validation: Ensure 'Id' exists, otherwise generate one
+        if 'Id' not in all_trades_df.columns:
+            st.warning("⚠️ 'Id' column missing from trades file. Auto-generating unique IDs based on row data.")
+            # Create a synthetic ID from all column values
+            all_trades_df['Id'] = all_trades_df.apply(lambda row: 'AUTO-' + str(abs(hash(''.join(str(val) for val in row.values)))), axis=1)
+
         # 2. Get frozen trade IDs
         frozen_ids = get_frozen_trade_ids()
 
@@ -165,4 +171,38 @@ elif page == "Compliance Archive":
                         )
                 else:
                     st.error("Report file not found.")
+
+                with st.expander("⚠️ Unfreeze Event", expanded=False):
+                    st.warning("Unfreezing will return these trades to the Pending queue.")
+                    unfreeze_just = st.text_input("Reason for unfreezing:", key=f"unfreeze_reason_{event_id}")
+                    if st.button("Confirm Unfreeze", key=f"btn_unfreeze_{event_id}", type="primary"):
+                        if not unfreeze_just:
+                            st.error("You must provide a justification to unfreeze.")
+                        else:
+                            unfreeze_event(event_id, unfreeze_just)
+                            st.success("Event unfrozen.")
+                            st.rerun()
+
                 st.divider()
+
+elif page == "Audit Log":
+    st.header("Security & Compliance Audit Log")
+    st.write("This log tracks all freeze and unfreeze actions for permanent record.")
+
+    logs = get_audit_log()
+    if not logs:
+        st.info("No audit logs found.")
+    else:
+        log_data = []
+        for l in logs:
+            event_id, status, subject, frozen_at, just, unfrozen_at, unfreeze_just = l
+            log_data.append({
+                "Event ID": event_id,
+                "Status": status,
+                "Advisor View": subject,
+                "Frozen At": frozen_at,
+                "Freeze Justification": just,
+                "Unfrozen At": unfrozen_at if unfrozen_at else "-",
+                "Unfreeze Reason": unfreeze_just if unfreeze_just else "-"
+            })
+        st.dataframe(pd.DataFrame(log_data), width='stretch')

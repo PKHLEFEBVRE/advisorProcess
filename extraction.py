@@ -150,6 +150,11 @@ def create_pdf_report(record_id, email_data, model_df, trades_df, comment, outpu
     else:
         story.append(Paragraph("None provided.", styles['Normal']))
 
+    story.append(Spacer(1, 40))
+    story.append(Paragraph("<b>Compliance / Portfolio Manager Signature:</b> ___________________________", styles['Normal']))
+    story.append(Spacer(1, 12))
+    story.append(Paragraph(f"<b>Timestamp:</b> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", styles['Normal']))
+
     doc.build(story)
     return output_path
 
