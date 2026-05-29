@@ -82,7 +82,7 @@ if page == "Pending Trades":
                     # Show preview
                     selected_email_data = next((e for e in recent_emails if e['filepath'] == selected_email_path), None)
                     if selected_email_data:
-                        st.text_area("Email Preview", selected_email_data['body'], height=100, disabled=True)
+                        st.text_area("Email Preview", selected_email_data['body'], height=350, disabled=True)
 
                 # --- Model Data ---
                 st.markdown("### 2. Model Output")
