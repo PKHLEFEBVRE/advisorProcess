@@ -134,36 +134,46 @@ def create_pdf_report(record_id, email_data, model_df, trades_df, comment, outpu
     # Trades Section
     story.append(Paragraph("3. Executed Trades", styles['Heading2']))
     if not trades_df.empty:
-        trades_data = [trades_df.columns.tolist()] + trades_df.values.tolist()
+        wrap_style = ParagraphStyle('TradeWrap', parent=styles['Normal'], fontSize=8, leading=10, alignment=0)
+        header_style = ParagraphStyle('TradeHeader', parent=styles['Normal'], fontSize=9, leading=11, fontName='Helvetica-Bold', textColor=colors.whitesmoke, alignment=0)
 
+        # Extract headers (fields) and values
+        fields = list(trades_df.columns)
+        trades_values = trades_df.values.tolist() # Each inner list is a trade
 
-        # Convert all cell data to strings and wrap in Paragraphs to enable word-wrap
-        wrap_style = ParagraphStyle('TradeWrap', parent=styles['Normal'], fontSize=8, leading=10, alignment=1) # alignment 1 is center
-        wrapped_data = []
-        for i, row in enumerate(trades_data):
-            wrapped_row = []
-            for cell in row:
-                if i == 0: # Header
-                    header_style = ParagraphStyle('TradeHeader', parent=styles['Normal'], fontSize=9, leading=11, fontName='Helvetica-Bold', textColor=colors.whitesmoke, alignment=1)
-                    wrapped_row.append(Paragraph(str(cell), header_style))
-                else:
-                    wrapped_row.append(Paragraph(str(cell), wrap_style))
-            wrapped_data.append(wrapped_row)
+        num_trades = len(trades_values)
+        trades_per_table = 4 # Maximum number of trades to show side-by-side
 
-        t = Table(wrapped_data)
-        t.setStyle(TableStyle([
-            ('BACKGROUND', (0,0), (-1,0), colors.grey),
-            ('TEXTCOLOR', (0,0), (-1,0), colors.whitesmoke),
-            ('ALIGN', (0,0), (-1,-1), 'CENTER'),
-            ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
-            ('BOTTOMPADDING', (0,0), (-1,0), 12),
-            ('BACKGROUND', (0,1), (-1,-1), colors.lightsteelblue),
-            ('GRID', (0,0), (-1,-1), 1, colors.black)
-        ]))
-        story.append(t)
-    else:
-        story.append(Paragraph("No trade data available/selected.", styles['Normal']))
-    story.append(Spacer(1, 12))
+        for i in range(0, num_trades, trades_per_table):
+            chunk_trades = trades_values[i:i + trades_per_table]
+
+            # Build the transposed rows for this chunk
+            table_data = []
+            for col_idx, field_name in enumerate(fields):
+                row = [Paragraph(str(field_name), header_style)]
+                for trade in chunk_trades:
+                    row.append(Paragraph(str(trade[col_idx]), wrap_style))
+                table_data.append(row)
+
+            # Create Table
+            first_col_w = 120
+            remaining_w = 468 - first_col_w
+            trade_col_w = remaining_w / len(chunk_trades) if len(chunk_trades) > 0 else 0
+            col_widths = [first_col_w] + [trade_col_w] * len(chunk_trades)
+
+            t = Table(table_data, colWidths=col_widths)
+
+            t.setStyle(TableStyle([
+                ('BACKGROUND', (0,0), (0,-1), colors.grey),
+                ('TEXTCOLOR', (0,0), (0,-1), colors.whitesmoke),
+                ('FONTNAME', (0,0), (0,-1), 'Helvetica-Bold'),
+                ('BACKGROUND', (1,0), (-1,-1), colors.lightsteelblue),
+                ('GRID', (0,0), (-1,-1), 1, colors.black),
+                ('VALIGN', (0,0), (-1,-1), 'TOP')
+            ]))
+
+            story.append(t)
+            story.append(Spacer(1, 15))
 
     # Justification Section
     story.append(Paragraph("4. Justification / Comments", styles['Heading2']))
