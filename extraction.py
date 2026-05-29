@@ -97,7 +97,7 @@ def create_pdf_report(record_id, email_data, model_df, trades_df, comment, outpu
     story.append(Paragraph("1. Advisor View (Email)", styles['Heading2']))
     story.append(Paragraph(f"<b>Date:</b> {email_data['date']}", styles['Normal']))
     story.append(Paragraph(f"<b>Subject:</b> {email_data['subject']}", styles['Normal']))
-    story.append(Spacer(1, 6))
+    story.append(Spacer(1, 12))
 
     body_style = ParagraphStyle('EmailBody', parent=styles['Normal'], backColor=colors.lightgrey, borderPadding=10)
     story.append(Paragraph(email_data['body'].replace('\n', '<br/>'), body_style))
@@ -106,7 +106,16 @@ def create_pdf_report(record_id, email_data, model_df, trades_df, comment, outpu
     # Model Output Section
     story.append(Paragraph("2. Model Output", styles['Heading2']))
     if not model_df.empty:
-        model_data = [model_df.columns.tolist()] + model_df.values.tolist()
+        formatted_df = model_df.copy()
+        # Format the last 3 columns as percentages if they are numeric
+        if len(formatted_df.columns) >= 3:
+            for col in formatted_df.columns[-3:]:
+                formatted_df[col] = pd.to_numeric(formatted_df[col], errors='ignore')
+                # If numeric, apply formatting
+                if pd.api.types.is_numeric_dtype(formatted_df[col]):
+                    formatted_df[col] = formatted_df[col].apply(lambda x: f"{x:.2%}" if pd.notnull(x) else x)
+
+        model_data = [formatted_df.columns.tolist()] + formatted_df.values.tolist()
         t = Table(model_data)
         t.setStyle(TableStyle([
             ('BACKGROUND', (0,0), (-1,0), colors.grey),
@@ -126,7 +135,13 @@ def create_pdf_report(record_id, email_data, model_df, trades_df, comment, outpu
     story.append(Paragraph("3. Executed Trades", styles['Heading2']))
     if not trades_df.empty:
         trades_data = [trades_df.columns.tolist()] + trades_df.values.tolist()
-        t = Table(trades_data)
+
+        # Calculate dynamic column widths to fit page
+        num_cols = len(trades_df.columns)
+        available_width = 468 # Letter width (612) minus 1 inch margins on each side (72*2)
+        col_width = available_width / num_cols if num_cols > 0 else 0
+
+        t = Table(trades_data, colWidths=[col_width] * num_cols)
         t.setStyle(TableStyle([
             ('BACKGROUND', (0,0), (-1,0), colors.grey),
             ('TEXTCOLOR', (0,0), (-1,0), colors.whitesmoke),
@@ -149,8 +164,6 @@ def create_pdf_report(record_id, email_data, model_df, trades_df, comment, outpu
         story.append(Paragraph("None provided.", styles['Normal']))
 
     story.append(Spacer(1, 40))
-    story.append(Paragraph("<b>Compliance / Portfolio Manager Signature:</b> ___________________________", styles['Normal']))
-    story.append(Spacer(1, 12))
     story.append(Paragraph(f"<b>Timestamp:</b> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", styles['Normal']))
 
     doc.build(story)
