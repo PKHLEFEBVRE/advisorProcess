@@ -91,7 +91,10 @@ if page == "Pending Trades":
                     if st.button("🔄 Refresh Model Data"):
                         st.rerun()
                 model_df = get_model_data()
-                st.dataframe(model_df, width='stretch')
+                if len(model_df.columns) >= 3:
+                    st.dataframe(model_df.style.format({col: '{:.2%}' for col in model_df.columns[-3:]}, na_rep=''), width='stretch')
+                else:
+                    st.dataframe(model_df, width='stretch')
 
                 # --- Fund Selection ---
                 st.markdown("### 3. Fund Selection")

@@ -136,12 +136,21 @@ def create_pdf_report(record_id, email_data, model_df, trades_df, comment, outpu
     if not trades_df.empty:
         trades_data = [trades_df.columns.tolist()] + trades_df.values.tolist()
 
-        # Calculate dynamic column widths to fit page
-        num_cols = len(trades_df.columns)
-        available_width = 468 # Letter width (612) minus 1 inch margins on each side (72*2)
-        col_width = available_width / num_cols if num_cols > 0 else 0
 
-        t = Table(trades_data, colWidths=[col_width] * num_cols)
+        # Convert all cell data to strings and wrap in Paragraphs to enable word-wrap
+        wrap_style = ParagraphStyle('TradeWrap', parent=styles['Normal'], fontSize=8, leading=10, alignment=1) # alignment 1 is center
+        wrapped_data = []
+        for i, row in enumerate(trades_data):
+            wrapped_row = []
+            for cell in row:
+                if i == 0: # Header
+                    header_style = ParagraphStyle('TradeHeader', parent=styles['Normal'], fontSize=9, leading=11, fontName='Helvetica-Bold', textColor=colors.whitesmoke, alignment=1)
+                    wrapped_row.append(Paragraph(str(cell), header_style))
+                else:
+                    wrapped_row.append(Paragraph(str(cell), wrap_style))
+            wrapped_data.append(wrapped_row)
+
+        t = Table(wrapped_data)
         t.setStyle(TableStyle([
             ('BACKGROUND', (0,0), (-1,0), colors.grey),
             ('TEXTCOLOR', (0,0), (-1,0), colors.whitesmoke),
