@@ -5,5 +5,6 @@ set STREAMLIT_BROWSER_GATHER_USAGE_STATS=false
 echo Ensuring dependencies are installed...
 pip install -q -r requirements.txt
 
-echo Starting Compliance Tracker...
-python -m streamlit run app.py
+REM Launch the Compliance Tracker Dashboard silently in the background
+REM Using pythonw hides the console window.
+start "" pythonw -m streamlit run app.py
