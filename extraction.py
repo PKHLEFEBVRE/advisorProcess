@@ -43,34 +43,32 @@ def parse_email(file_path):
         'body': body.strip()
     }
 
+def filter_columns(df):
+    if len(df.columns) >= 5:
+        # Keep first two columns and last three columns
+        import pandas as pd
+        return pd.concat([df.iloc[:, :2], df.iloc[:, -3:]], axis=1)
+    return df
+
 def get_model_data(filepath=MODEL_FILE):
     try:
-        # Load the workbook with openpyxl to find the named range
         wb = openpyxl.load_workbook(filepath, data_only=True)
-
         if MODEL_NAMED_RANGE in wb.defined_names:
-            # Extract the coordinates for the named range
             destinations = list(wb.defined_names[MODEL_NAMED_RANGE].destinations)
             if destinations:
                 sheet_name, coord = destinations[0]
                 sheet = wb[sheet_name]
-
-                # Extract the data from the specific cells
                 data = []
                 for row in sheet[coord]:
                     data.append([cell.value for cell in row])
-
                 if data:
-                    # Assume first row is headers
                     df = pd.DataFrame(data[1:], columns=data[0])
-                    # Drop entirely empty rows or columns just in case
                     df.dropna(how='all', inplace=True)
                     df.dropna(axis=1, how='all', inplace=True)
-                    return df
+                    return filter_columns(df)
 
-        # Fallback if named range not found or not parsable
         print(f"Named range '{MODEL_NAMED_RANGE}' not found, falling back to reading first sheet.")
-        return pd.read_excel(filepath)
+        return filter_columns(pd.read_excel(filepath))
     except Exception as e:
         print(f"Error reading model data: {e}")
         return pd.DataFrame()
