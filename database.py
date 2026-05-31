@@ -111,6 +111,24 @@ def get_audit_log():
     conn.close()
     return records
 
+
+def get_events_between_dates(start_date, end_date):
+    # start_date and end_date should be strings in 'YYYY-MM-DD' format
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    # We want to filter based on the frozen_at timestamp.
+    # frozen_at looks like '2023-10-25 14:30:00'. We can use DATE() to compare.
+    cursor.execute('''
+        SELECT id, email_subject, email_date, funds, justification, frozen_at
+        FROM compliance_events
+        WHERE status = 'Active'
+        AND DATE(frozen_at) >= ? AND DATE(frozen_at) <= ?
+        ORDER BY frozen_at ASC
+    ''', (start_date, end_date))
+    records = cursor.fetchall()
+    conn.close()
+    return records
+
 if __name__ == '__main__':
     init_db()
     print("Database initialized.")

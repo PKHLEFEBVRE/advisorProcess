@@ -4,8 +4,8 @@ import streamlit as st
 import pandas as pd
 import os
 import subprocess
-from database import init_db, get_frozen_trade_ids, get_frozen_events, freeze_event, get_trades_for_event, unfreeze_event, get_audit_log
-from extraction import get_model_data, get_trades_data, create_pdf_report, get_recent_emails
+from database import init_db, get_frozen_trade_ids, get_frozen_events, freeze_event, get_trades_for_event, unfreeze_event, get_audit_log, get_events_between_dates
+from extraction import get_model_data, get_trades_data, create_pdf_report, get_recent_emails, create_committee_report
 
 st.set_page_config(page_title="Compliance Tracker", layout="wide")
 
@@ -18,7 +18,7 @@ for directory in [EMAILS_DIR, REPORTS_DIR]:
 
 # Sidebar
 st.sidebar.title("Compliance App")
-page = st.sidebar.radio("Navigation", ["Pending Trades", "Compliance Archive", "Audit Log"])
+page = st.sidebar.radio("Navigation", ["Pending Trades", "Compliance Archive", "Committee Report", "Audit Log"])
 
 if page == "Pending Trades":
     st.header("Pending Trades to Review")
@@ -215,3 +215,57 @@ elif page == "Audit Log":
                 "Unfreeze Reason": unfreeze_just if unfreeze_just else "-"
             })
         st.dataframe(pd.DataFrame(log_data), width='stretch')
+
+elif page == "Committee Report":
+    st.header("Committee Summary Generator")
+    st.write("Generate a high-level PDF summary of all compliance events and trades within a specific date range.")
+
+    col1, col2 = st.columns(2)
+    with col1:
+        start_date = st.date_input("Start Date")
+    with col2:
+        end_date = st.date_input("End Date")
+
+    if st.button("Generate Summary", type="primary"):
+        if start_date > end_date:
+            st.error("Start Date must be before or equal to End Date.")
+        else:
+            # Format dates for SQL comparison
+            start_str = start_date.strftime("%Y-%m-%d")
+            end_str = end_date.strftime("%Y-%m-%d")
+
+            raw_events = get_events_between_dates(start_str, end_str)
+
+            # Augment events with their associated trades
+            events_data = []
+            for ev in raw_events:
+                event_id, subject, email_date, funds, just, frozen_at = ev
+                trades = get_trades_for_event(event_id)
+                events_data.append((event_id, subject, email_date, funds, just, frozen_at, trades))
+
+            report_filename = f"committee_summary_{start_str}_to_{end_str}.pdf"
+            report_path = os.path.join(REPORTS_DIR, report_filename)
+
+            create_committee_report(events_data, start_str, end_str, report_path)
+
+            st.success("Summary Generated Successfully!")
+
+            if os.path.exists(report_path):
+                with open(report_path, "rb") as pdf_file:
+                    PDFbyte = pdf_file.read()
+                    st.download_button(
+                        label="Download Committee Report (PDF)",
+                        data=PDFbyte,
+                        file_name=report_filename,
+                        mime='application/octet-stream',
+                        key="dl_committee"
+                    )
+
+                # Auto open it for convenience
+                try:
+                    os.startfile(report_path)
+                except AttributeError:
+                    try:
+                        subprocess.call(['open', report_path])
+                    except Exception:
+                        pass

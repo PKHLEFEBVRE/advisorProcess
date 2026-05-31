@@ -188,5 +188,46 @@ def create_pdf_report(record_id, email_data, model_df, trades_df, comment, outpu
     doc.build(story)
     return output_path
 
+
+def create_committee_report(events_data, start_date, end_date, output_path):
+    doc = SimpleDocTemplate(output_path, pagesize=letter)
+    styles = getSampleStyleSheet()
+    story = []
+
+    # Title
+    story.append(Paragraph(f"Committee Summary Report", styles['Heading1']))
+    story.append(Paragraph(f"<b>Period:</b> {start_date} to {end_date}", styles['Normal']))
+    story.append(Spacer(1, 20))
+
+    if not events_data:
+        story.append(Paragraph("No compliance events recorded during this period.", styles['Normal']))
+        doc.build(story)
+        return output_path
+
+    for event in events_data:
+        event_id, subject, email_date, funds, justification, frozen_at, trades = event
+
+        story.append(Paragraph(f"Event #{event_id} - {subject}", styles['Heading2']))
+        story.append(Paragraph(f"<b>Frozen At:</b> {frozen_at} | <b>Advisor Date:</b> {email_date}", styles['Normal']))
+        story.append(Paragraph(f"<b>Funds:</b> {funds if funds else 'N/A'}", styles['Normal']))
+        story.append(Spacer(1, 6))
+
+        # Justification
+        body_style = ParagraphStyle('JustBody', parent=styles['Normal'], backColor=colors.whitesmoke, borderPadding=10)
+        story.append(Paragraph(f"<b>Justification:</b><br/>{justification}", body_style))
+        story.append(Spacer(1, 6))
+
+        # Trades list
+        trades_str = ", ".join(trades) if trades else "None"
+        story.append(Paragraph(f"<b>Executed Trades:</b> {trades_str}", styles['Normal']))
+
+        story.append(Spacer(1, 20))
+
+    story.append(Spacer(1, 30))
+    story.append(Paragraph(f"<b>Report Generated:</b> {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", styles['Normal']))
+
+    doc.build(story)
+    return output_path
+
 if __name__ == '__main__':
     pass
