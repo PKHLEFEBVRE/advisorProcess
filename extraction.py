@@ -80,7 +80,7 @@ def get_trades_data(filepath=TRADES_FILE):
         print(f"Error reading trades data: {e}")
         return pd.DataFrame()
 
-def create_pdf_report(record_id, email_data, model_df, trades_df, comment, output_path, funds):
+def create_pdf_report(record_id, email_data, model_df, trades_df, comment, output_path, funds, trade_status):
     doc = SimpleDocTemplate(output_path, pagesize=letter)
     styles = getSampleStyleSheet()
     story = []
@@ -205,11 +205,20 @@ def create_committee_report(events_data, start_date, end_date, output_path):
         return output_path
 
     for event in events_data:
-        event_id, subject, email_date, funds, justification, frozen_at, trades = event
+        event_id, subject, email_date, funds, trade_status, justification, frozen_at, trades = event
 
         story.append(Paragraph(f"Event #{event_id} - {subject}", styles['Heading2']))
+
+        status_color = "black"
+        if trade_status == "Approve":
+            status_color = "green"
+        elif trade_status == "Reject":
+            status_color = "red"
+        elif trade_status == "Postpone":
+            status_color = "orange"
+
         story.append(Paragraph(f"<b>Frozen At:</b> {frozen_at} | <b>Advisor Date:</b> {email_date}", styles['Normal']))
-        story.append(Paragraph(f"<b>Funds:</b> {funds if funds else 'N/A'}", styles['Normal']))
+        story.append(Paragraph(f"<b>Funds:</b> {funds if funds else 'N/A'} | <b>Status:</b> <font color='{status_color}'>{trade_status}</font>", styles['Normal']))
         story.append(Spacer(1, 6))
 
         # Justification

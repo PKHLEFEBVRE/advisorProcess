@@ -15,6 +15,7 @@ def init_db():
             email_date TEXT,
             justification TEXT,
             funds TEXT,
+            trade_status TEXT,
             report_path TEXT,
             frozen_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             status TEXT DEFAULT 'Active',
@@ -47,7 +48,7 @@ def get_frozen_events():
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute('''
-        SELECT id, email_subject, email_date, funds, report_path, frozen_at
+        SELECT id, email_subject, email_date, funds, trade_status, report_path, frozen_at
         FROM compliance_events
         WHERE status = 'Active'
         ORDER BY frozen_at DESC
@@ -64,14 +65,14 @@ def get_trades_for_event(event_id):
     conn.close()
     return [r[0] for r in records]
 
-def freeze_event(email_file, email_subject, email_date, justification, funds, report_path, trade_ids):
+def freeze_event(email_file, email_subject, email_date, justification, funds, trade_status, report_path, trade_ids):
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
 
     cursor.execute('''
-        INSERT INTO compliance_events (email_file, email_subject, email_date, justification, funds, report_path)
-        VALUES (?, ?, ?, ?, ?, ?)
-    ''', (email_file, email_subject, email_date, justification, ", ".join(funds), report_path))
+        INSERT INTO compliance_events (email_file, email_subject, email_date, justification, funds, trade_status, report_path)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+    ''', (email_file, email_subject, email_date, justification, ", ".join(funds), trade_status, report_path))
 
     event_id = cursor.lastrowid
 
@@ -119,7 +120,7 @@ def get_events_between_dates(start_date, end_date):
     # We want to filter based on the frozen_at timestamp.
     # frozen_at looks like '2023-10-25 14:30:00'. We can use DATE() to compare.
     cursor.execute('''
-        SELECT id, email_subject, email_date, funds, justification, frozen_at
+        SELECT id, email_subject, email_date, funds, trade_status, justification, frozen_at
         FROM compliance_events
         WHERE status = 'Active'
         AND DATE(frozen_at) >= ? AND DATE(frozen_at) <= ?

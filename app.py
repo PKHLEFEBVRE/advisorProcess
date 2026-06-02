@@ -102,16 +102,25 @@ if page == "Pending Trades":
                 else:
                     st.dataframe(model_df, width='stretch', hide_index=True)
 
-                # --- Fund Selection ---
-                st.markdown("### 3. Fund Selection")
-                selected_funds = st.multiselect(
-                    "Which fund(s) does this view apply to?",
-                    ["MFOF", "MLSU"],
-                    default=["MFOF", "MLSU"]
-                )
+                # --- Fund & Status Selection ---
+                col_fund, col_status = st.columns(2)
+                with col_fund:
+                    st.markdown("### 3. Fund Selection")
+                    selected_funds = st.multiselect(
+                        "Which fund(s) does this view apply to?",
+                        ["MFOF", "MLSU"],
+                        default=["MFOF", "MLSU"]
+                    )
+                with col_status:
+                    st.markdown("### 4. Decision Status")
+                    trade_status = st.radio(
+                        "What is the decision for these trades?",
+                        ["Approve", "Reject", "Postpone"],
+                        horizontal=True
+                    )
 
                 # --- Justification ---
-                st.markdown("### 4. Justification")
+                st.markdown("### 5. Justification")
                 comment = st.text_area("Add compliance notes/justification here:")
 
                 # --- Freeze ---
@@ -123,7 +132,7 @@ if page == "Pending Trades":
                         report_path = os.path.join(REPORTS_DIR, report_filename)
 
                         # Generate PDF
-                        create_pdf_report("NEW", selected_email_data, model_df, selected_trades, comment, report_path, selected_funds)
+                        create_pdf_report("NEW", selected_email_data, model_df, selected_trades, comment, report_path, selected_funds, trade_status)
 
                         # Update database
                         trade_ids = selected_trades['Id'].tolist()
@@ -133,6 +142,7 @@ if page == "Pending Trades":
                             selected_email_data['date'],
                             comment,
                             selected_funds,
+                            trade_status,
                             report_path,
                             trade_ids
                         )
@@ -157,13 +167,13 @@ elif page == "Compliance Archive":
         st.info("No frozen events found.")
     else:
         for record in frozen_events:
-            event_id, subject, date_received, funds, report_path, frozen_at = record
+            event_id, subject, date_received, funds, trade_status, report_path, frozen_at = record
 
             with st.container():
                 st.markdown(f"#### Event: {subject}")
                 st.write(f"**Frozen At:** {frozen_at}")
                 st.write(f"**Email Date:** {date_received}")
-                st.write(f"**Funds:** {funds if funds else 'N/A'}")
+                st.write(f"**Funds:** {funds if funds else 'N/A'} | **Status:** {trade_status}")
 
                 trades = get_trades_for_event(event_id)
                 st.write(f"**Associated Trades:** {', '.join(trades) if trades else 'None'}")
@@ -239,9 +249,9 @@ elif page == "Committee Report":
             # Augment events with their associated trades
             events_data = []
             for ev in raw_events:
-                event_id, subject, email_date, funds, just, frozen_at = ev
+                event_id, subject, email_date, funds, trade_status, just, frozen_at = ev
                 trades = get_trades_for_event(event_id)
-                events_data.append((event_id, subject, email_date, funds, just, frozen_at, trades))
+                events_data.append((event_id, subject, email_date, funds, trade_status, just, frozen_at, trades))
 
             report_filename = f"committee_summary_{start_str}_to_{end_str}.pdf"
             report_path = os.path.join(REPORTS_DIR, report_filename)
