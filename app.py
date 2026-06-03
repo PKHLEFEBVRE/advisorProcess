@@ -72,14 +72,19 @@ if page == "Pending Trades":
                 email_limit = st.number_input("How many recent emails to show?", min_value=1, max_value=50, value=10, step=1)
                 recent_emails = get_recent_emails(limit=email_limit)
 
-                if not recent_emails:
-                    st.warning("No emails found in the directory.")
-                else:
-                    # Format options for selectbox
-                    email_options = {e['filepath']: f"{e['date']} - {e['subject']}" for e in recent_emails}
-                    selected_email_path = st.selectbox("Choose Email", options=list(email_options.keys()), format_func=lambda x: email_options[x])
+                # Format options for selectbox
+                email_options = {"NONE": "No Advisor View (Independent Trade)"}
+                if recent_emails:
+                    for e in recent_emails:
+                        email_options[e['filepath']] = f"{e['date']} - {e['subject']}"
 
-                    # Show preview
+                selected_email_path = st.selectbox("Choose Email", options=list(email_options.keys()), format_func=lambda x: email_options[x])
+
+                # Show preview
+                if selected_email_path == "NONE":
+                    selected_email_data = {'filepath': None, 'subject': 'Independent Trade', 'date': None, 'body': ''}
+                    st.info("No email attached to this event.")
+                else:
                     selected_email_data = next((e for e in recent_emails if e['filepath'] == selected_email_path), None)
                     if selected_email_data:
                         st.text_area("Email Preview", selected_email_data['body'], height=350, disabled=True)
@@ -124,9 +129,9 @@ if page == "Pending Trades":
                 comment = st.text_area("Add compliance notes/justification here:")
 
                 # --- Freeze ---
-                if st.button("❄️ Freeze & Generate Report", type="primary"):
-                    if not recent_emails:
-                        st.error("Cannot freeze without an advisor email.")
+                if st.button("❄️ Freeze & Generate Report", type="primary", key="freeze_trades"):
+                    if False: # Dummy to keep indentation
+                        pass
                     else:
                         report_filename = f"report_{datetime.now().strftime('%Y%m%d%H%M%S')}.pdf"
                         report_path = os.path.join(REPORTS_DIR, report_filename)
@@ -158,6 +163,78 @@ if page == "Pending Trades":
 
                         st.success("Trades successfully frozen!")
                         st.rerun()
+
+
+    # ---------------------------------------------------------
+    # SCENARIO 2: Emails without Trades
+    # ---------------------------------------------------------
+    st.divider()
+    st.header("Pending Advisor Views (No Trade Executed)")
+    st.write("If you received an advisor view but decided to Reject or Postpone it without executing any trades, freeze it here.")
+
+    # Get all frozen email paths
+    frozen_evs = get_frozen_events()
+    frozen_email_paths = [ev[1] for ev in frozen_evs] if frozen_evs else [] # Actually index 1 is subject, we need to update this logic.
+    # We will just fetch the latest emails and let the user select one that doesn't have trades.
+
+    recent_emails_no_trade = get_recent_emails(limit=20)
+    if not recent_emails_no_trade:
+        st.info("No recent emails found.")
+    else:
+        email_options_nt = {e['filepath']: f"{e['date']} - {e['subject']}" for e in recent_emails_no_trade}
+        selected_email_path_nt = st.selectbox("Choose Email to Reject/Postpone", options=[""] + list(email_options_nt.keys()), format_func=lambda x: email_options_nt[x] if x else "Select an email...")
+
+        if selected_email_path_nt:
+            selected_email_data_nt = next((e for e in recent_emails_no_trade if e['filepath'] == selected_email_path_nt), None)
+            st.text_area("Email Preview", selected_email_data_nt['body'], height=200, disabled=True, key="preview_nt")
+
+            col_fund_nt, col_status_nt = st.columns(2)
+            with col_fund_nt:
+                selected_funds_nt = st.multiselect(
+                    "Which fund(s) does this view apply to?",
+                    ["MFOF", "MLSU"],
+                    default=["MFOF", "MLSU"],
+                    key="fund_nt"
+                )
+            with col_status_nt:
+                trade_status_nt = st.radio(
+                    "What is the decision?",
+                    ["Reject", "Postpone"],
+                    horizontal=True,
+                    key="status_nt"
+                )
+
+            comment_nt = st.text_area("Add compliance notes/justification here:", key="comment_nt")
+
+            if st.button("❄️ Freeze Email (No Trades)", type="primary", key="freeze_nt"):
+                report_filename_nt = f"report_notrade_{datetime.now().strftime('%Y%m%d%H%M%S')}.pdf"
+                report_path_nt = os.path.join(REPORTS_DIR, report_filename_nt)
+
+                # Generate PDF (passing empty dataframes for model and trades)
+                create_pdf_report("NEW (No Trade)", selected_email_data_nt, pd.DataFrame(), pd.DataFrame(), comment_nt, report_path_nt, selected_funds_nt, trade_status_nt)
+
+                # Update database with empty trade_ids
+                freeze_event(
+                    selected_email_data_nt['filepath'],
+                    selected_email_data_nt['subject'],
+                    selected_email_data_nt['date'],
+                    comment_nt,
+                    selected_funds_nt,
+                    trade_status_nt,
+                    report_path_nt,
+                    []
+                )
+
+                try:
+                    os.startfile(report_path_nt)
+                except AttributeError:
+                    try:
+                        subprocess.call(['open', report_path_nt])
+                    except Exception:
+                        pass
+
+                st.success("Email successfully frozen without trades!")
+                st.rerun()
 
 elif page == "Compliance Archive":
     st.header("Compliance Archive (Frozen Events)")
